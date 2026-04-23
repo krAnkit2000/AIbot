@@ -60,13 +60,7 @@ html, body {
   gap: 8px;
 }
 
-/* .online-badge {
-  background: rgba(255,255,255,0.2);
-  color: #fff;
-  font-size: 10px;
-  padding: 3px 8px;
-  border-radius: 20px;
-} */
+
  .online-badge {
   display: flex;
   align-items: center;
@@ -205,7 +199,7 @@ padding: 11px 17px;
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 6px; /* kam gap mobile ke liye */
+  gap: 6px; 
 }
 
 @media (max-width: 768px) {
@@ -214,3 +208,68 @@ padding: 11px 17px;
   }
 }
 
+
+/* Mic Button */
+.mic-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+ 
+.mic-btn:hover {
+  border-color: #6366f1;
+  background: #f5f3ff;
+}
+ 
+.mic-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+ 
+/* Mic listening animation */
+.mic-btn.listening {
+  background: #fee2e2;
+  border-color: #ef4444;
+  animation: mic-pulse 1s infinite;
+}
+ 
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+ 
+/* Listening indicator */
+.listening-bar {
+  background: #fff0f0;
+  border-top: 1px solid #fecaca;
+  padding: 6px 16px;
+  font-size: 12px;
+  color: #ef4444;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+ 
+.listening-dot {
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+  animation: blink 1s infinite;
+}
+ 
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}

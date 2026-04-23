@@ -1,8 +1,13 @@
+
+
+
+
+// src/GeminiChat.js
 import { useState, useRef, useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "./firebase";
 import Login from "./Login";
-import { sendChatMessage } from "./chatAPI"; // ✅ import
+import { sendChatMessage } from "./chatAPI";
 import "./GeminiChat.css";
 
 const FREE_LIMIT = 10;
@@ -29,15 +34,18 @@ function Message({ msg }) {
 
 export default function GeminiChat({ user }) {
   const [messages, setMessages] = useState([
-    { id: 0, role: "ai", text: "Hello! 👋 Ask me anything, I’ll answer!" },
+    { id: 0, role: "ai", text: "Hello! 👋 Ask me anything, I'll answer!" },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [micSupported, setMicSupported] = useState(true);
   const [queryCount, setQueryCount] = useState(() =>
     parseInt(localStorage.getItem("freeQueryCount") || "0")
   );
 
   const chatEndRef = useRef(null);
+  const recognitionRef = useRef(null);
 
   const queriesLeft = FREE_LIMIT - queryCount;
   const showLoginWall = !user && queriesLeft <= 0;
@@ -46,14 +54,70 @@ export default function GeminiChat({ user }) {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Setup Speech Recognition
+  useEffect(() => {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setMicSupported(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "hi-IN"; // Hindi + English dono kaam karte hain
+    recognition.interimResults = true;
+    recognition.continuous = false;
+
+    recognition.onresult = (event) => {
+      let transcript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setInput(transcript);
+    };
+
+    recognition.onend = () => {
+      setListening(false);
+    };
+
+    recognition.onerror = (e) => {
+      console.error("Speech error:", e.error);
+      setListening(false);
+      if (e.error === "not-allowed") {
+        alert("Mic permission do — browser settings mein jaake allow karo।");
+      }
+    };
+
+    recognitionRef.current = recognition;
+  }, []);
+
+  const toggleMic = () => {
+    if (!recognitionRef.current) return;
+
+    if (listening) {
+      recognitionRef.current.stop();
+      setListening(false);
+    } else {
+      setInput("");
+      recognitionRef.current.start();
+      setListening(true);
+    }
+  };
+
   if (showLoginWall) {
     return <Login queriesLeft={0} />;
   }
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
-
     if (!user && queriesLeft <= 0) return;
+
+    // Stop mic if still listening
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+    }
 
     const userMsg = { id: Date.now(), role: "user", text: input.trim() };
     const typingMsg = { id: Date.now() + 1, role: "ai", typing: true };
@@ -69,8 +133,7 @@ export default function GeminiChat({ user }) {
     }
 
     try {
-      const reply = await sendChatMessage(userMsg.text); // ✅ API call
-
+      const reply = await sendChatMessage(userMsg.text);
       setMessages((prev) =>
         prev.map((m) =>
           m.id === typingMsg.id
@@ -109,6 +172,7 @@ export default function GeminiChat({ user }) {
     <div className="chat-wrapper">
       <div className="chat-container">
 
+        {/* Header */}
         <div className="chat-header">
           <div className="chat-header-icon">🤖</div>
           <div>
@@ -124,24 +188,32 @@ export default function GeminiChat({ user }) {
                   alt="avatar"
                   className="user-avatar"
                 />
-                <button className="logout-btn" onClick={handleLogout}>
-                  Logout
-                </button>
+                <button className="logout-btn" onClick={handleLogout}>Logout</button>
               </>
             )}
           </div>
         </div>
 
+        {/* Query Counter */}
         {!user && (
           <div className="query-counter">
             {queriesLeft > 0 ? (
-              <>You have <strong>{queriesLeft} free quer{queriesLeft === 1 ? "y" : "ies"}</strong> left — log in for unlimited access</>
+              <>You have <strong>{queriesLeft} free {queriesLeft === 1 ? "query" : "queries"}</strong> left — log in for unlimited access</>
             ) : (
               <>⚠️ Free queries are over — <strong>Log in</strong> to continue</>
             )}
           </div>
         )}
 
+        {/* Listening Indicator */}
+        {listening && (
+          <div className="listening-bar">
+            <div className="listening-dot" />
+          Speaking... 
+          </div>
+        )}
+
+        {/* Chat Box */}
         <div className="chat-box">
           {messages.map((msg) => (
             <Message key={msg.id} msg={msg} />
@@ -149,19 +221,38 @@ export default function GeminiChat({ user }) {
           <div ref={chatEndRef} />
         </div>
 
+        {/* Input Area */}
         <div className="chat-input-area">
+
+          {/* Mic Button */}
+          {micSupported && (
+            <button
+              className={`mic-btn ${listening ? "listening" : ""}`}
+              onClick={toggleMic}
+              disabled={loading || (!user && queriesLeft <= 0)}
+              title={listening ? "Click to stop" : "Click to speak"}
+            >
+              {listening ? "🔴" : "🎤"}
+            </button>
+          )}
+
+          {/* Text Input */}
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
-              !user && queriesLeft <= 0
+              listening
+                ? "Bol raha hoon... 🎤"
+                : !user && queriesLeft <= 0
                 ? "Log in to continue..."
-                : "Type your question..."
+                : "Type or speak your question..."
             }
             disabled={loading || (!user && queriesLeft <= 0)}
             className="chat-textarea"
           />
+
+          {/* Send Button */}
           <button
             onClick={sendMessage}
             disabled={loading || !input.trim() || (!user && queriesLeft <= 0)}
@@ -169,8 +260,8 @@ export default function GeminiChat({ user }) {
           >
             {loading ? "..." : "Send ↑"}
           </button>
-        </div>
 
+        </div>
       </div>
     </div>
   );

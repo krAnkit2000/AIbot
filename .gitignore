@@ -25,3 +25,5 @@ yarn-error.log*
 src/firebase.js
 
 src/chatAPI.js
+.vercel
+.env*.local
